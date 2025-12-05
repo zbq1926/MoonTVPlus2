@@ -30,6 +30,7 @@ import {
   saveDanmakuMemory,
   saveDanmakuSettings,
   searchAnime,
+  initDanmakuModule,
 } from '@/lib/danmaku/api';
 import type { DanmakuAnime, DanmakuSelection, DanmakuSettings } from '@/lib/danmaku/types';
 import { SearchResult, DanmakuFilterConfig } from '@/lib/types';
@@ -271,6 +272,11 @@ function PlayPageClient() {
   useEffect(() => {
     danmakuSettingsRef.current = danmakuSettings;
   }, [danmakuSettings]);
+
+  // 初始化弹幕模块（清理过期缓存）
+  useEffect(() => {
+    initDanmakuModule();
+  }, []);
 
   // 加载弹幕过滤配置
   useEffect(() => {

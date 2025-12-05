@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
+import { clearAllDanmakuCache } from '@/lib/danmaku/api';
 import { CURRENT_VERSION } from '@/lib/version';
 import { checkForUpdates, UpdateStatus } from '@/lib/version_check';
 
@@ -108,6 +109,10 @@ export const UserMenu: React.FC = () => {
   // 版本检查相关状态
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null);
   const [isChecking, setIsChecking] = useState(true);
+
+  // 清除弹幕缓存相关状态
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [clearCacheMessage, setClearCacheMessage] = useState<string | null>(null);
 
   // 确保组件已挂载
   useEffect(() => {
@@ -447,6 +452,33 @@ export const UserMenu: React.FC = () => {
       localStorage.setItem('doubanDataSource', defaultDoubanProxyType);
       localStorage.setItem('doubanImageProxyType', defaultDoubanImageProxyType);
       localStorage.setItem('doubanImageProxyUrl', defaultDoubanImageProxyUrl);
+    }
+  };
+
+  // 清除弹幕缓存
+  const handleClearDanmakuCache = async () => {
+    setIsClearingCache(true);
+    setClearCacheMessage(null);
+
+    try {
+      await clearAllDanmakuCache();
+      setClearCacheMessage('弹幕缓存已清除成功！');
+      console.log('弹幕缓存已清除');
+
+      // 3秒后自动清除提示
+      setTimeout(() => {
+        setClearCacheMessage(null);
+      }, 3000);
+    } catch (error) {
+      console.error('清除弹幕缓存失败:', error);
+      setClearCacheMessage('清除失败，请重试');
+
+      // 3秒后自动清除提示
+      setTimeout(() => {
+        setClearCacheMessage(null);
+      }, 3000);
+    } finally {
+      setIsClearingCache(false);
     }
   };
 
@@ -953,6 +985,51 @@ export const UserMenu: React.FC = () => {
                   <div className='absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5'></div>
                 </div>
               </label>
+            </div>
+
+            {/* 分割线 */}
+            <div className='border-t border-gray-200 dark:border-gray-700'></div>
+
+            {/* 清除弹幕缓存 */}
+            <div className='space-y-3'>
+              <div>
+                <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  弹幕缓存管理
+                </h4>
+                <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+                  清除所有已缓存的弹幕数据
+                </p>
+              </div>
+              <button
+                onClick={handleClearDanmakuCache}
+                disabled={isClearingCache}
+                className='w-full px-4 py-2.5 bg-red-500 hover:bg-red-600 disabled:bg-red-400 dark:bg-red-600 dark:hover:bg-red-700 dark:disabled:bg-red-500 text-white text-sm font-medium rounded-lg transition-colors duration-200 shadow-sm hover:shadow-md disabled:cursor-not-allowed flex items-center justify-center gap-2'
+              >
+                {isClearingCache ? (
+                  <>
+                    <div className='w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin'></div>
+                    <span>清除中...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className='w-4 h-4' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' />
+                    </svg>
+                    <span>清除弹幕缓存</span>
+                  </>
+                )}
+              </button>
+
+              {/* 成功/失败提示 */}
+              {clearCacheMessage && (
+                <div className={`text-sm p-3 rounded-lg border ${
+                  clearCacheMessage.includes('成功')
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                }`}>
+                  {clearCacheMessage}
+                </div>
+              )}
             </div>
           </div>
 
