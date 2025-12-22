@@ -2544,6 +2544,7 @@ const OpenListConfigComponent = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rootPath, setRootPath] = useState('/');
+  const [scanInterval, setScanInterval] = useState(0);
   const [videos, setVideos] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [scanProgress, setScanProgress] = useState<{
@@ -2560,6 +2561,7 @@ const OpenListConfigComponent = ({
       setUsername(config.OpenListConfig.Username || '');
       setPassword(config.OpenListConfig.Password || '');
       setRootPath(config.OpenListConfig.RootPath || '/');
+      setScanInterval(config.OpenListConfig.ScanInterval || 0);
     }
   }, [config]);
 
@@ -2597,6 +2599,7 @@ const OpenListConfigComponent = ({
             Username: username,
             Password: password,
             RootPath: rootPath,
+            ScanInterval: scanInterval,
           }),
         });
 
@@ -2771,6 +2774,23 @@ const OpenListConfigComponent = ({
           />
           <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
             OpenList 中的视频文件夹路径，默认为根目录 /
+          </p>
+        </div>
+
+        <div>
+          <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+            定时扫描间隔（分钟）
+          </label>
+          <input
+            type='number'
+            value={scanInterval}
+            onChange={(e) => setScanInterval(parseInt(e.target.value) || 0)}
+            placeholder='0'
+            min='0'
+            className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+          />
+          <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
+            设置为 0 关闭定时扫描，最低 60 分钟
           </p>
         </div>
 

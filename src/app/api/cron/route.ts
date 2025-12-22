@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
 async function cronJob() {
   await refreshConfig();
   await refreshAllLiveChannels();
+  await refreshOpenList();
   await refreshRecordAndFavorites();
 }
 
@@ -262,5 +263,61 @@ async function refreshRecordAndFavorites() {
     console.log('刷新播放记录/收藏任务完成');
   } catch (err) {
     console.error('刷新播放记录/收藏任务启动失败', err);
+  }
+}
+
+async function refreshOpenList() {
+  try {
+    const config = await getConfig();
+    const openListConfig = config.OpenListConfig;
+
+    // 检查是否配置了 OpenList 和定时扫描
+    if (!openListConfig || !openListConfig.URL || !openListConfig.Username || !openListConfig.Password) {
+      console.log('跳过 OpenList 扫描：未配置');
+      return;
+    }
+
+    const scanInterval = openListConfig.ScanInterval || 0;
+    if (scanInterval === 0) {
+      console.log('跳过 OpenList 扫描：定时扫描已关闭');
+      return;
+    }
+
+    // 检查间隔时间是否满足最低要求（60分钟）
+    if (scanInterval < 60) {
+      console.log(`跳过 OpenList 扫描：间隔时间 ${scanInterval} 分钟小于最低要求 60 分钟`);
+      return;
+    }
+
+    // 检查上次扫描时间
+    const lastRefreshTime = openListConfig.LastRefreshTime || 0;
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime;
+    const intervalMs = scanInterval * 60 * 1000;
+
+    if (timeSinceLastRefresh < intervalMs) {
+      const remainingMinutes = Math.ceil((intervalMs - timeSinceLastRefresh) / 60000);
+      console.log(`跳过 OpenList 扫描：距离上次扫描仅 ${Math.floor(timeSinceLastRefresh / 60000)} 分钟，还需等待 ${remainingMinutes} 分钟`);
+      return;
+    }
+
+    console.log(`开始 OpenList 定时扫描（间隔: ${scanInterval} 分钟）`);
+
+    // 调用扫描接口
+    const response = await fetch(`${process.env.SITE_BASE || 'http://localhost:3000'}/api/openlist/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`扫描请求失败: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('OpenList 定时扫描已启动，任务ID:', result.taskId);
+  } catch (err) {
+    console.error('OpenList 定时扫描失败:', err);
   }
 }

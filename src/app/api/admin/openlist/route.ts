@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { action, URL, Username, Password, RootPath } = body;
+    const { action, URL, Username, Password, RootPath, ScanInterval } = body;
 
     const authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
@@ -56,6 +56,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // 验证扫描间隔
+      let scanInterval = parseInt(ScanInterval) || 0;
+      if (scanInterval > 0 && scanInterval < 60) {
+        return NextResponse.json(
+          { error: '定时扫描间隔最低为 60 分钟' },
+          { status: 400 }
+        );
+      }
+
       // 验证账号密码是否正确
       try {
         console.log('[OpenList Config] 验证账号密码');
@@ -76,6 +85,7 @@ export async function POST(request: NextRequest) {
         RootPath: RootPath || '/',
         LastRefreshTime: adminConfig.OpenListConfig?.LastRefreshTime,
         ResourceCount: adminConfig.OpenListConfig?.ResourceCount,
+        ScanInterval: scanInterval,
       };
 
       await db.saveAdminConfig(adminConfig);

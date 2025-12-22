@@ -98,6 +98,7 @@ export interface AdminConfig {
     RootPath: string; // 根目录路径，默认 "/"
     LastRefreshTime?: number; // 上次刷新时间戳
     ResourceCount?: number; // 资源数量
+    ScanInterval?: number; // 定时扫描间隔（分钟），0表示关闭，最低60分钟
   };
 }
 
