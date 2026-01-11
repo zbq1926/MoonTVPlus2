@@ -50,7 +50,7 @@ async function findNFO(
   const pathParts = videoPath.split('/').filter(Boolean);
   const parentDir = pathParts.slice(0, -1).join('/');
 
-  const isInSeasonDir = /season\s*\d+/i.test(parentDir);
+  const isInSeasonDir = /(season\s*\d+|s\d+)/i.test(parentDir);
 
   const nfoSearchPaths: string[] = [];
 
@@ -90,23 +90,43 @@ export async function getXiaoyaMetadata(
   const pathParts = videoPath.split('/').filter(Boolean);
 
   // 验证路径格式
-  if (pathParts.length < 2) {
+  if (pathParts.length < 1) {
     throw new Error(`无效的视频路径格式: ${videoPath}`);
   }
 
-  const isInSeasonDir = pathParts.length >= 2 && /season\s*\d+/i.test(pathParts[pathParts.length - 2]);
+  // 判断是否为文件路径（包含视频扩展名）
+  const videoExtensions = ['.mp4', '.mkv', '.avi', '.m3u8', '.flv', '.ts', '.mov', '.wmv', '.webm'];
+  const isFilePath = videoExtensions.some(ext => videoPath.toLowerCase().endsWith(ext));
+
+  // 如果是文件路径，检查是否在季度目录中
+  const isInSeasonDir = isFilePath && pathParts.length >= 2 && /(season\s*\d+|s\d+)/i.test(pathParts[pathParts.length - 2]);
 
   // 验证路径长度是否足够
   if (isInSeasonDir && pathParts.length < 3) {
     throw new Error(`Season目录路径格式不正确: ${videoPath}`);
   }
 
-  // 确定元数据目录
-  const metadataDir = isInSeasonDir
-    ? pathParts.slice(0, -2).join('/')
-    : pathParts.slice(0, -1).join('/');
+  // 确定元数据目录和文件夹名
+  let metadataDir: string;
+  let folderName: string;
 
-  const folderName = pathParts[isInSeasonDir ? pathParts.length - 3 : pathParts.length - 2];
+  if (isFilePath) {
+    // 文件路径
+    metadataDir = isInSeasonDir
+      ? pathParts.slice(0, -2).join('/')
+      : pathParts.slice(0, -1).join('/');
+    folderName = pathParts[isInSeasonDir ? pathParts.length - 3 : pathParts.length - 2];
+  } else {
+    // 目录路径
+    if (pathParts.length === 1) {
+      // 只有一级目录
+      metadataDir = '';
+      folderName = pathParts[0];
+    } else {
+      metadataDir = pathParts.slice(0, -1).join('/');
+      folderName = pathParts[pathParts.length - 1];
+    }
+  }
 
   // 验证 folderName 是否有效
   if (!folderName) {
@@ -235,14 +255,19 @@ export async function getXiaoyaEpisodes(
   videoPath: string
 ): Promise<Array<{ path: string; title: string }>> {
   const pathParts = videoPath.split('/').filter(Boolean);
-  const isInSeasonDir = /season\s*\d+/i.test(pathParts[pathParts.length - 2]);
+
+  // 判断是否为文件路径（包含视频扩展名）
+  const videoExtensions = ['.mp4', '.mkv', '.avi', '.m3u8', '.flv', '.ts', '.mov', '.wmv', '.webm'];
+  const isFilePath = videoExtensions.some(ext => videoPath.toLowerCase().endsWith(ext));
+
+  // 如果是文件路径，检查是否在季度目录中
+  const isInSeasonDir = isFilePath && /(season\s*\d+|s\d+)/i.test(pathParts[pathParts.length - 2]);
 
   if (isInSeasonDir) {
     // 电视剧：列出当前季的所有集
     const seasonDir = pathParts.slice(0, -1).join('/');
     const listResponse = await xiaoyaClient.listDirectory(`/${seasonDir}`);
 
-    const videoExtensions = ['.mp4', '.mkv', '.avi', '.m3u8', '.flv', '.ts', '.mov', '.wmv', '.webm'];
     const videoFiles = listResponse.content
       .filter(item =>
         !item.is_dir &&
@@ -267,11 +292,10 @@ export async function getXiaoyaEpisodes(
       };
     });
   } else {
-    // 电影：列出同一文件夹下的所有视频
-    const parentDir = pathParts.slice(0, -1).join('/');
-    const listResponse = await xiaoyaClient.listDirectory(`/${parentDir}`);
+    // 目录路径或电影文件路径：列出该目录下的所有视频
+    const targetDir = isFilePath ? pathParts.slice(0, -1).join('/') : pathParts.join('/');
+    const listResponse = await xiaoyaClient.listDirectory(`/${targetDir}`);
 
-    const videoExtensions = ['.mp4', '.mkv', '.avi', '.m3u8', '.flv', '.ts', '.mov', '.wmv', '.webm'];
     const videoFiles = listResponse.content
       .filter(item =>
         !item.is_dir &&
@@ -280,7 +304,7 @@ export async function getXiaoyaEpisodes(
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return videoFiles.map(file => ({
-      path: `/${parentDir}/${file.name}`,
+      path: `/${targetDir}/${file.name}`,
       title: file.name,
     }));
   }
